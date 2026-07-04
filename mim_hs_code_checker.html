@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIM Approval Checker | HS Code Lookup</title>
+<style>
+  :root {
+    --navy: #0b2545;
+    --navy-2: #13315c;
+    --steel: #6b7f99;
+    --accent: #c98a3b;
+    --accent-2: #e0a95e;
+    --paper: #f6f3ec;
+    --card: #ffffff;
+    --line: #dfe3ea;
+    --ok-bg: #eaf5ee;
+    --ok-line: #2f8a52;
+    --warn-bg: #fdf3e7;
+    --warn-line: #c98a3b;
+    --danger-bg: #fbeaea;
+    --danger-line: #b93a3a;
+    --text: #16233a;
+    --text-dim: #56617a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--paper);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Inter', Arial, sans-serif;
+  }
+  .topbar {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+    color: #fff;
+    padding: 26px 20px 60px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .topbar::after {
+    content: "";
+    position: absolute;
+    right: -60px; top: -60px;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(224,169,94,0.18) 0%, rgba(224,169,94,0) 70%);
+  }
+  .brand-row {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    font-weight: 600;
+  }
+  .brand-row .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); }
+  h1.hero {
+    max-width: 900px;
+    margin: 14px auto 6px auto;
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+  p.sub {
+    max-width: 900px;
+    margin: 0 auto;
+    color: #cdd8ea;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .search-card {
+    max-width: 900px;
+    margin: -34px auto 0 auto;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(11,37,69,0.18);
+    padding: 22px;
+    position: relative;
+    z-index: 2;
+    border: 1px solid var(--line);
+  }
+  .search-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  #hsInput {
+    flex: 1;
+    min-width: 220px;
+    padding: 14px 16px;
+    font-size: 18px;
+    font-family: 'Consolas', 'SFMono-Regular', monospace;
+    letter-spacing: 0.02em;
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  #hsInput:focus { border-color: var(--accent); }
+  button#checkBtn {
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    padding: 0 26px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  button#checkBtn:hover { background: var(--navy-2); }
+  .hint {
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+
+  .result-area { max-width: 900px; margin: 18px auto 0 auto; }
+
+  .result-card {
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    border: 1.5px solid var(--line);
+    background: var(--card);
+    animation: fadeIn .25s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: translateY(0);} }
+
+  .result-card.required { background: var(--warn-bg); border-color: var(--warn-line); }
+  .result-card.clear { background: var(--ok-bg); border-color: var(--ok-line); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+  }
+  .badge.required { background: var(--accent); color: #fff; }
+  .badge.clear { background: var(--ok-line); color: #fff; }
+
+  .result-title { font-size: 19px; font-weight: 800; margin: 12px 0 4px 0; }
+  .result-meta { font-size: 13.5px; color: var(--text-dim); line-height: 1.7; }
+  .result-meta b { color: var(--text); }
+  .match-code {
+    font-family: 'Consolas', monospace;
+    background: rgba(11,37,69,0.06);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 700;
+  }
+  .vague-note {
+    margin-top: 10px;
+    font-size: 12.5px;
+    background: rgba(0,0,0,0.04);
+    padding: 8px 12px;
+    border-radius: 7px;
+    border-left: 3px solid var(--warn-line);
+  }
+
+  .disclaimer {
+    max-width: 900px;
+    margin: 22px auto 40px auto;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.7;
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+
+  .stats-bar {
+    max-width: 900px;
+    margin: 26px auto 0 auto;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    flex: 1;
+    min-width: 140px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .stat .n { font-size: 22px; font-weight: 800; color: var(--navy); }
+  .stat .l { font-size: 11.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+  details.browse {
+    max-width: 900px;
+    margin: 22px auto 0 auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 4px 20px;
+  }
+  details.browse summary {
+    cursor: pointer;
+    padding: 14px 0;
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--navy-2);
+  }
+  .browse-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+  .browse-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-dim); border-bottom: 1.5px solid var(--line); padding: 6px 8px;
+  }
+  .browse-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .browse-table code { font-family: 'Consolas', monospace; font-size: 12px; }
+  .annex-tag {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 5px; background: rgba(11,37,69,0.08); color: var(--navy-2); margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand-row"><span class="dot"></span> SABER CERTIFICATION SERVICES</div>
+  <h1 class="hero">MIM Approval Checker</h1>
+  <p class="sub">Enter an HS code to check whether it currently falls under the Ministry of Industry &amp; Mineral Resources (MIM) approval requirement inside the SABER platform.</p>
+</div>
+
+<div class="search-card">
+  <div class="search-row">
+    <input id="hsInput" type="text" placeholder="e.g. 72104100 or 7210.41.00" autocomplete="off" />
+    <button id="checkBtn">Check HS Code</button>
+  </div>
+  <div class="hint">Spaces, dots and dashes are ignored automatically. You can paste the code exactly as it appears on your customs declaration.</div>
+</div>
+
+<div class="result-area" id="resultArea"></div>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<details class="browse">
+  <summary>Browse the full MIM product list (69 entries)</summary>
+  <div id="browseTableWrap"></div>
+</details>
+
+<div class="disclaimer">
+  <b>Source &amp; accuracy note:</b> This tool checks HS codes against the MIM Annex list supplied by your compliance team (last updated per the source document). SASO/SABER updates its HS code and MIM requirements periodically — always confirm a "not on this list" result against the live SABER platform or the latest official SASO/MIM circular before final shipment decisions. This tool is a quick internal reference, not a substitute for the official SABER registration check.
+</div>
+
+<script>
+const MIM_DATA = [{"product": "Acrylic & vinyl polymer paints (non-aqueous)", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["68101990"], "ranges": [], "vague": false, "raw": "68101990"}, {"product": "Surface preparation compounds / fillers", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["32149000"], "ranges": [], "vague": false, "raw": "32149000"}, {"product": "Acrylic polymers (primary forms)", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["39069090"], "ranges": [], "vague": false, "raw": "39069090"}, {"product": "Polyurethane sheets, films, strips", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["39211300"], "ranges": [], "vague": false, "raw": "39211300"}, {"product": "Plastic construction articles", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["39259000"], "ranges": [], "vague": false, "raw": "39259000"}, {"product": "Carpets and rugs", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["57033910"], "ranges": [], "vague": false, "raw": "57033910"}, {"product": "Synthetic fiber dresses (non-knitted)", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["62044300"], "ranges": [], "vague": false, "raw": "62044300"}, {"product": "Cement / concrete / artificial stone products", "category": "General", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["68101990"], "ranges": [], "vague": false, "raw": "68101990"}, {"product": "Steel billets", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["72071100", "72071900", "72072000"], "ranges": [], "vague": false, "raw": "72071100 / 72071900 / 72072000"}, {"product": "Iron slabs", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["72071200"], "ranges": [], "vague": false, "raw": "72071200"}, {"product": "Hot rolled flat steel products (multiple codes)", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["72082500", "72111900"]], "vague": false, "raw": "(72082500 \u2192 72111900)"}, {"product": "Cold rolled steel products", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["72091600", "72099000"]], "vague": false, "raw": "(codes 72091600 \u2192 72099000)"}, {"product": "Galvanized flat steel", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["72104100", "72126000"]], "vague": false, "raw": "72104100 \u2192 72126000"}, {"product": "Coated steel products", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["72124000"], "ranges": [], "vague": false, "raw": "72124000"}, {"product": "Wire rod products", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["72132000", "72139900"]], "vague": false, "raw": "72132000 \u2192 72139900"}, {"product": "Reinforcing steel (rebar)", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["72141040", "72142090", "72149900"], "ranges": [], "vague": false, "raw": "72141040 / 72142090 / 72149900"}, {"product": "Light steel sections", "category": "Steel & Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["72161000", "72165000"]], "vague": false, "raw": "72161000 \u2192 72165000"}, {"product": "Seamless pipes", "category": "Pipes & Tubes", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["73041900", "73049000"]], "vague": false, "raw": "73041900 \u2192 73049000"}, {"product": "Welded pipes", "category": "Pipes & Tubes", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["73051100", "73069000"]], "vague": false, "raw": "73051100 \u2192 73069000"}, {"product": "Stainless welded pipes", "category": "Pipes & Tubes", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["73061100", "73064030"]], "vague": false, "raw": "73061100 \u2192 73064030"}, {"product": "Steel towers", "category": "Structural & Construction Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["73082000"], "ranges": [], "vague": false, "raw": "73082000"}, {"product": "Steel doors (non-insulated)", "category": "Structural & Construction Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["73083010", "73083069"]], "vague": false, "raw": "more 73083010 \u2192 73083069"}, {"product": "Water tanks", "category": "Structural & Construction Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["73090010"], "ranges": [], "vague": false, "raw": ">300L \u2013 73090010"}, {"product": "Fence posts", "category": "Structural & Construction Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["73269070"], "ranges": [], "vague": false, "raw": "73269070"}, {"product": "Bolts & screws", "category": "Structural & Construction Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["73181500"], "ranges": [], "vague": false, "raw": "73181500"}, {"product": "Aluminum structures", "category": "Structural & Construction Metal Products", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["76109090"], "ranges": [], "vague": false, "raw": "76109090"}, {"product": "Refrigeration counters", "category": "Machinery & Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["84185000"], "ranges": [], "vague": false, "raw": "84185000"}, {"product": "Elevators and lifts", "category": "Machinery & Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["84281010", "84281090"]], "vague": false, "raw": "84281010 \u2192 84281090"}, {"product": "Conveyor systems", "category": "Machinery & Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["84283300"], "ranges": [], "vague": false, "raw": "84283300"}, {"product": "Machinery parts", "category": "Machinery & Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["84314900", "84799000"], "ranges": [], "vague": false, "raw": "84314900 / 84799000"}, {"product": "Gear and transmission parts", "category": "Machinery & Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["84839000"], "ranges": [], "vague": false, "raw": "84839000"}, {"product": "Circuit breakers", "category": "Electrical Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["85352900"], "ranges": [], "vague": false, "raw": "85352900"}, {"product": "Control panels", "category": "Electrical Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["85371000", "85381000"], "ranges": [], "vague": false, "raw": "85371000 / 85381000"}, {"product": "Containers", "category": "Transport & Industrial Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["86090000"], "ranges": [], "vague": false, "raw": "86090000"}, {"product": "Ships & vessels", "category": "Transport & Industrial Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["89019000", "89040000", "89069090"], "ranges": [], "vague": false, "raw": "89019000 / 89040000 / 89069090"}, {"product": "Control devices", "category": "Transport & Industrial Equipment", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["90328900"], "ranges": [], "vague": false, "raw": "90328900"}, {"product": "Wooden furniture", "category": "Furniture & Prefabricated Buildings", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["94036090"], "ranges": [], "vague": false, "raw": "94036090"}, {"product": "Wooden buildings", "category": "Furniture & Prefabricated Buildings", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["94061040"], "ranges": [], "vague": false, "raw": "94061040"}, {"product": "Prefabricated steel buildings", "category": "Furniture & Prefabricated Buildings", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["94062000"], "ranges": [], "vague": false, "raw": "94062000"}, {"product": "Other prefabricated buildings", "category": "Furniture & Prefabricated Buildings", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["94069029", "94069044", "94069090"], "ranges": [], "vague": false, "raw": "94069029 / 94069044 / 94069090"}, {"product": "Bridges", "category": "Additional Highlights", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["73081000"], "ranges": [], "vague": false, "raw": "73081000"}, {"product": "Aluminum sheets & coils", "category": "Additional Highlights", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["760611", "760692"]], "vague": true, "raw": "various codes (760611 \u2192 760692)"}, {"product": "Air conditioners", "category": "Additional Highlights", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["841510100001"], "ranges": [], "vague": false, "raw": "841510100001"}, {"product": "Generator sets", "category": "Additional Highlights", "annex": "Annex 1 (Newly Added Products)", "exact_codes": [], "ranges": [["850211", "850213"]], "vague": false, "raw": "850211 \u2192 850213"}, {"product": "Transformers", "category": "Additional Highlights", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["853521000000"], "ranges": [], "vague": false, "raw": "853521000000"}, {"product": "Automotive parts", "category": "Additional Highlights", "annex": "Annex 1 (Newly Added Products)", "exact_codes": ["870840009999"], "ranges": [], "vague": false, "raw": "870840009999"}, {"product": "Tissue rolls", "category": "Paper & Consumer Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["48030010", "48030090"], "ranges": [], "vague": false, "raw": "48030010 / 48030090"}, {"product": "Paper cups", "category": "Paper & Consumer Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["482369000004"], "ranges": [], "vague": false, "raw": "482369000004"}, {"product": "Cardboard", "category": "Paper & Consumer Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["480511000000", "480524000000"], "ranges": [], "vague": false, "raw": "480511000000 / 480524000000"}, {"product": "Baby diapers", "category": "Paper & Consumer Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["620920000008", "961900100000"], "ranges": [], "vague": false, "raw": "620920000008 / 961900100000"}, {"product": "Manhole covers", "category": "Construction Materials", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": [], "ranges": [], "vague": true, "raw": "multiple HS codes"}, {"product": "Polyester fibers", "category": "Construction Materials", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["5503200000", "5509529000"], "ranges": [], "vague": false, "raw": "5503200000 / 5509529000"}, {"product": "Shade nets", "category": "Construction Materials", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["560819009999"], "ranges": [], "vague": false, "raw": "560819009999"}, {"product": "Ceramic tiles", "category": "Construction Materials", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["69072300", "69072100", "69072200"], "ranges": [], "vague": false, "raw": "69072300 / 69072100 / 69072200"}, {"product": "White cement", "category": "Construction Materials", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": [], "ranges": [["252321000001", "252321000004"]], "vague": false, "raw": "252321000001 \u2192 252321000004"}, {"product": "Concrete additives", "category": "Construction Materials", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["382440000000"], "ranges": [], "vague": false, "raw": "382440000000"}, {"product": "Steel products", "category": "Steel & Metal Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["72103000", "72107000", "72171000"], "ranges": [], "vague": true, "raw": "multiple codes (e.g., 72103000 / 72107000 / 72171000)"}, {"product": "Rebar", "category": "Steel & Metal Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["72131000"], "ranges": [], "vague": false, "raw": "72131000"}, {"product": "Painted steel sheets", "category": "Steel & Metal Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["72109000"], "ranges": [], "vague": false, "raw": "72109000"}, {"product": "Galvanized steel", "category": "Steel & Metal Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["72123000", "72106100"], "ranges": [], "vague": false, "raw": "72123000 / 72106100"}, {"product": "Steel structures & scaffolding", "category": "Steel & Metal Products", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": [], "ranges": [], "vague": true, "raw": "multiple codes"}, {"product": "Ductile pipes", "category": "Pipes & Infrastructure", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["73030000"], "ranges": [], "vague": true, "raw": "73030000 + related"}, {"product": "Plastic pipes", "category": "Pipes & Infrastructure", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": [], "ranges": [["391729000001", "391729000003"]], "vague": false, "raw": "391729000001 \u2192 391729000003"}, {"product": "Clay pipes", "category": "Pipes & Infrastructure", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["690600000000"], "ranges": [], "vague": false, "raw": "690600000000"}, {"product": "Car batteries", "category": "Other", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["85071000", "85072000"], "ranges": [], "vague": false, "raw": "85071000 / 85072000"}, {"product": "Warehouse racks", "category": "Other", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["73089020"], "ranges": [], "vague": false, "raw": "73089020"}, {"product": "Fiber optic cables", "category": "Other", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["854470000000"], "ranges": [], "vague": false, "raw": "854470000000"}, {"product": "Aluminum (unalloyed)", "category": "Other", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["76011000"], "ranges": [], "vague": false, "raw": "76011000"}, {"product": "Cold rolled flat steel", "category": "Other", "annex": "Annex 2 (Previously Circularized Products)", "exact_codes": ["72091700"], "ranges": [], "vague": false, "raw": "72091700"}];
+
+function normalize(code) {
+  return (code || "").replace(/[^0-9]/g, "");
+}
+
+function codeInRange(codeDigits, rangeStart, rangeEnd) {
+  // Compare numerically when lengths reasonably align; otherwise compare as
+  // zero-padded strings of the longer length to keep leading-digit meaning.
+  const maxLen = Math.max(rangeStart.length, rangeEnd.length, codeDigits.length);
+  const pad = (s) => s.padEnd(maxLen, "0");
+  const c = pad(codeDigits.slice(0, maxLen));
+  const a = pad(rangeStart);
+  const b = pad(rangeEnd);
+  return c >= a && c <= b;
+}
+
+function findMatches(inputDigits) {
+  const exactHits = [];
+  const rangeHits = [];
+  const prefixHits = [];
+
+  MIM_DATA.forEach(rec => {
+    rec.exact_codes.forEach(code => {
+      if (code === inputDigits) {
+        exactHits.push({ rec, code });
+      } else if (inputDigits.length > code.length && inputDigits.startsWith(code)) {
+        prefixHits.push({ rec, code });
+      } else if (code.length > inputDigits.length && code.startsWith(inputDigits)) {
+        prefixHits.push({ rec, code, isBroader: true });
+      }
+    });
+    rec.ranges.forEach(([start, end]) => {
+      if (codeInRange(inputDigits, start, end)) {
+        rangeHits.push({ rec, start, end });
+      }
+    });
+  });
+
+  return { exactHits, rangeHits, prefixHits };
+}
+
+function renderResult(inputRaw, inputDigits) {
+  const area = document.getElementById("resultArea");
+  area.innerHTML = "";
+
+  if (!inputDigits) {
+    area.innerHTML = `<div class="result-card"><div class="result-meta">Enter a valid HS code (digits only) to check.</div></div>`;
+    return;
+  }
+
+  const { exactHits, rangeHits, prefixHits } = findMatches(inputDigits);
+  const allHits = [...exactHits, ...rangeHits, ...prefixHits];
+
+  if (allHits.length === 0) {
+    area.innerHTML = `
+      <div class="result-card clear">
+        <span class="badge clear">✓ NOT ON MIM LIST</span>
+        <div class="result-title">No MIM approval requirement found</div>
+        <div class="result-meta">
+          HS code <span class="match-code">${inputRaw}</span> does not match any entry in the current MIM Annex 1 or Annex 2 list.
+          <br>Proceed with standard SABER registration for this product. If this product changed classification recently, double-check on the live SABER portal.
+        </div>
+      </div>`;
+    return;
+  }
+
+  const seen = new Set();
+  let html = "";
+  allHits.forEach(hit => {
+    const key = hit.rec.product + hit.rec.annex;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const rec = hit.rec;
+    let matchLabel = "";
+    if (exactHits.find(h => h.rec === rec)) matchLabel = `Exact match: <span class="match-code">${hit.code || inputRaw}</span>`;
+    else if (rangeHits.find(h => h.rec === rec)) {
+      const r = rangeHits.find(h => h.rec === rec);
+      matchLabel = `Within listed range: <span class="match-code">${r.start} → ${r.end}</span>`;
+    } else if (prefixHits.find(h => h.rec === rec)) {
+      const p = prefixHits.find(h => h.rec === rec);
+      matchLabel = p.isBroader
+        ? `Your code is a narrower version of listed code <span class="match-code">${p.code}</span>`
+        : `Matches base classification <span class="match-code">${p.code}</span>`;
+    }
+
+    html += `
+      <div class="result-card required">
+        <span class="badge required">⚠ MIM APPROVAL REQUIRED</span>
+        <div class="result-title">${rec.product}</div>
+        <div class="result-meta">
+          <b>Category:</b> ${rec.category}<br>
+          <b>${matchLabel}</b><br>
+          <b>Source:</b> <span class="annex-tag">${rec.annex}</span>
+          ${rec.vague ? `<div class="vague-note">⚠ This entry's HS code list is non-exhaustive in the source document ("${rec.raw}"). Confirm the exact code coverage with your MIM/SASO contact before relying on this alone.</div>` : ""}
+        </div>
+      </div>`;
+  });
+
+  area.innerHTML = html;
+}
+
+document.getElementById("checkBtn").addEventListener("click", () => {
+  const raw = document.getElementById("hsInput").value.trim();
+  renderResult(raw, normalize(raw));
+});
+document.getElementById("hsInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("checkBtn").click();
+});
+
+// Stats bar
+(function renderStats() {
+  const annex1 = MIM_DATA.filter(r => r.annex.startsWith("Annex 1")).length;
+  const annex2 = MIM_DATA.filter(r => r.annex.startsWith("Annex 2")).length;
+  const categories = new Set(MIM_DATA.map(r => r.category)).size;
+  document.getElementById("statsBar").innerHTML = `
+    <div class="stat"><div class="n">${MIM_DATA.length}</div><div class="l">Total Products Listed</div></div>
+    <div class="stat"><div class="n">${annex1}</div><div class="l">Annex 1 (Newly Added)</div></div>
+    <div class="stat"><div class="n">${annex2}</div><div class="l">Annex 2 (Previously Circular)</div></div>
+    <div class="stat"><div class="n">${categories}</div><div class="l">Product Categories</div></div>
+  `;
+})();
+
+// Browse table
+(function renderBrowse() {
+  let rows = "";
+  MIM_DATA.forEach(rec => {
+    const codes = [...rec.exact_codes, ...rec.ranges.map(r => r[0] + " → " + r[1])].join(", ") || rec.raw;
+    rows += `<tr>
+      <td>${rec.product}</td>
+      <td>${rec.category}</td>
+      <td><code>${codes}</code></td>
+      <td><span class="annex-tag">${rec.annex.split(" ")[1]}</span></td>
+    </tr>`;
+  });
+  document.getElementById("browseTableWrap").innerHTML = `
+    <table class="browse-table">
+      <thead><tr><th>Product</th><th>Category</th><th>HS Code(s)</th><th>Annex</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+})();
+</script>
+
+</body>
+</html>
