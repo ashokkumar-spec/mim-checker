@@ -155,11 +155,38 @@ function normalize(code) {
 function findMatches(code) {
   const target = normalize(code);
   if (!target) return [];
+
+  // Full/near-full code: exact match on codes, numeric range containment
   const num = parseInt(target, 10);
-  return MIM_DATA.filter(e => {
+  const exact = MIM_DATA.filter(e => {
     if (e.hs_code) return e.hs_code === target;
     if (e.hs_code_range) return num >= e.hs_code_range[0] && num <= e.hs_code_range[1];
     return false;
+  });
+  if (exact.length > 0 && target.length >= 6) return exact;
+
+  // Short/partial input: prefix match against exact codes, and overlap match against ranges
+  const prefixMatches = MIM_DATA.filter(e => {
+    if (e.hs_code) return e.hs_code.startsWith(target);
+    if (e.hs_code_range) {
+      const [lo, hi] = e.hs_code_range;
+      const loStr = String(lo), hiStr = String(hi);
+      const maxLen = Math.max(loStr.length, hiStr.length, target.length);
+      const padLow = parseInt(target.padEnd(maxLen, "0"), 10);
+      const padHigh = parseInt(target.padEnd(maxLen, "9"), 10);
+      return padHigh >= lo && padLow <= hi;
+    }
+    return false;
+  });
+
+  // Merge exact + prefix matches, de-duplicated
+  const combined = [...exact, ...prefixMatches];
+  const seen = new Set();
+  return combined.filter(e => {
+    const key = (e.hs_code || e.hs_code_range.join("-")) + "|" + e.product;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 
