@@ -167,18 +167,14 @@ function findMatches(code) {
   const target = normalize(code);
   if (!target) return [];
 
-  // Full/near-full code: exact match on codes, numeric range containment
-  const num = parseInt(target, 10);
-  const exact = MIM_DATA.filter(e => {
-    if (e.hs_code) return e.hs_code === target;
-    if (e.hs_code_range) return num >= e.hs_code_range[0] && num <= e.hs_code_range[1];
-    return false;
-  });
-  if (exact.length > 0 && target.length >= 6) return exact;
-
-  // Short/partial input: prefix match against exact codes, and overlap match against ranges
-  const prefixMatches = MIM_DATA.filter(e => {
-    if (e.hs_code) return e.hs_code.startsWith(target);
+  const matches = MIM_DATA.filter(e => {
+    if (e.hs_code) {
+      // Match regardless of which one is longer: either the stored code is a
+      // prefix of what was typed (e.g. excel has 6-digit code, user typed the
+      // full 8/10/12-digit code), or what was typed is a prefix of the stored
+      // code (partial/short search, e.g. user typed just 3-4 digits).
+      return e.hs_code.startsWith(target) || target.startsWith(e.hs_code);
+    }
     if (e.hs_code_range) {
       const [lo, hi] = e.hs_code_range;
       const loStr = String(lo), hiStr = String(hi);
@@ -190,10 +186,8 @@ function findMatches(code) {
     return false;
   });
 
-  // Merge exact + prefix matches, de-duplicated
-  const combined = [...exact, ...prefixMatches];
   const seen = new Set();
-  return combined.filter(e => {
+  return matches.filter(e => {
     const key = (e.hs_code || e.hs_code_range.join("-")) + "|" + e.product;
     if (seen.has(key)) return false;
     seen.add(key);
