@@ -118,6 +118,17 @@
 </style>
 </head>
 <body>
+<div id="gateOverlay" style="position:fixed;inset:0;background:#0f1720;display:flex;align-items:center;justify-content:center;z-index:999;">
+  <div style="background:#16212c;border:1px solid #26333f;border-radius:10px;padding:32px;max-width:340px;width:90%;text-align:center;">
+    <div style="font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;letter-spacing:0.14em;color:#2fb787;text-transform:uppercase;margin-bottom:10px;">SABER CERTIFICATION SERVICES</div>
+    <div style="font-size:18px;color:#e7edf3;margin-bottom:18px;">Enter passcode to continue</div>
+    <input type="password" id="gatePasscode" placeholder="Passcode" autocomplete="off"
+      style="width:100%;background:#0c141b;border:1px solid #26333f;color:#e7edf3;font-family:'SFMono-Regular',Consolas,monospace;font-size:16px;padding:12px 14px;border-radius:8px;outline:none;box-sizing:border-box;margin-bottom:12px;">
+    <button id="gateSubmit" style="width:100%;background:#2fb787;color:#06251c;border:none;font-weight:600;font-size:15px;padding:12px 20px;border-radius:8px;cursor:pointer;">Unlock</button>
+    <div id="gateError" style="color:#e2664a;font-size:13px;margin-top:10px;display:none;">Incorrect passcode. Try again.</div>
+  </div>
+</div>
+<div id="mainContent" style="display:none;">
 <div class="wrap">
   <div class="eyebrow">SABER CERTIFICATION SERVICES</div>
   <h1>MIM Approval Checker</h1>
@@ -273,6 +284,35 @@ document.getElementById("showArabic").addEventListener("change", function() {
   const currentCode = document.getElementById("hsInput").value;
   if (normalize(currentCode)) renderResult(currentCode);
 });
+</script>
+</div>
+<script>
+(function() {
+  const PASSCODE = "PCAS123";
+  const gate = document.getElementById("gateOverlay");
+  const main = document.getElementById("mainContent");
+  const input = document.getElementById("gatePasscode");
+  const err = document.getElementById("gateError");
+
+  function tryUnlock() {
+    if (input.value === PASSCODE) {
+      sessionStorage.setItem("mim_gate_ok", "1");
+      gate.style.display = "none";
+      main.style.display = "block";
+    } else {
+      err.style.display = "block";
+    }
+  }
+  document.getElementById("gateSubmit").addEventListener("click", tryUnlock);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
+
+  if (sessionStorage.getItem("mim_gate_ok") === "1") {
+    gate.style.display = "none";
+    main.style.display = "block";
+  } else {
+    input.focus();
+  }
+})();
 </script>
 </body>
 </html>
